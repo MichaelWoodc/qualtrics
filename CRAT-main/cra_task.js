@@ -9,27 +9,8 @@ const jsPsych = initJsPsych({
             await save_data_json();
             await save_data_csv();
             console.log("Data saved");
-            
-            // Show simple completion message
-            document.getElementById('jspsych-target').innerHTML = `
-                <div class="jspsych-content" style="text-align: center; padding: 50px;">
-                    <h2>Task Complete!</h2>
-                    <p>Thank you for completing the task.</p>
-                    <p>You may now return to the survey.</p>
-                </div>
-            `;
         } catch (err) {
             console.error("Save error:", err);
-            
-            // Show error message but still indicate completion
-            document.getElementById('jspsych-target').innerHTML = `
-                <div class="jspsych-content" style="text-align: center; padding: 50px;">
-                    <h2>Task Complete!</h2>
-                    <p>Thank you for completing the task.</p>
-                    <p>You may now return to the survey.</p>
-                    <p style="color: #666; font-size: 14px;">Note: There was an issue saving data, but your responses were recorded.</p>
-                </div>
-            `;
         }
     }
 });
@@ -129,7 +110,6 @@ function updateProgressBar(timeLeft, totalTime) {
         timeRemaining.textContent = `${timeLeft.toFixed(1)}s remaining`;
     }
 }
-
 
 // Fixation cross
 const fixation = {
@@ -293,7 +273,7 @@ async function runExperiment() {
         // Load problems from JSON file
         const problems = await loadProblems();
         
-        // Create timeline - start with simple start screen
+        // Create timeline - no start screen, just the trials
         const timeline = [];
 
         // Add all problems as test trials
