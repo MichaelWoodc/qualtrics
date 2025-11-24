@@ -1,5 +1,4 @@
 // Initialize jsPsych
-// Initialize jsPsych
 const jsPsych = initJsPsych({
     display_element: 'jspsych-target',
     on_finish: async function() {
@@ -20,7 +19,8 @@ const jsPsych = initJsPsych({
 });
 
 // ===========================================================
-// SAVE DATA TO YOUR SERVER (Using fetch, no jQuery required)
+// SAVE DATA TO YOURSERVER
+// If I need the info, save it here: /home/science/lamp-docker/html
 // ===========================================================
 
 // Get participant ID from Qualtrics (PROLIFIC_PID, workerId, etc.)
@@ -40,54 +40,63 @@ const file_json = `${sbj_id}.json`;
 const file_csv = `${sbj_id}.csv`;
 
 // Save JSON
-async function save_data_json() {
-    const body = new URLSearchParams({
-        data_dir: data_dir,
-        file_name: file_json,
-        exp_data: jsPsych.data.get().json()
+function save_data_json() {
+    return jQuery.ajax({
+        type: "POST",
+        url: save_url,
+        data: {
+            data_dir: data_dir,
+            file_name: file_json,
+            exp_data: jsPsych.data.get().json()
+        }
     });
-    const response = await fetch(save_url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-    if (!response.ok) throw new Error(`Failed to save JSON: ${response.statusText}`);
 }
 
 // Save CSV
-async function save_data_csv() {
-    const body = new URLSearchParams({
-        data_dir: data_dir,
-        file_name: file_csv,
-        exp_data: jsPsych.data.get().csv()
+function save_data_csv() {
+    return jQuery.ajax({
+        type: "POST",
+        url: save_url,
+        data: {
+            data_dir: data_dir,
+            file_name: file_csv,
+            exp_data: jsPsych.data.get().csv()
+        }
     });
-    const response = await fetch(save_url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-    });
-    if (!response.ok) throw new Error(`Failed to save CSV: ${response.statusText}`);
 }
 
-// -----------------------------------------------------------
-// (Rest of your experiment code remains mostly unchanged)
-// -----------------------------------------------------------
 
 // Function to load JSON data
 async function loadProblems() {
     try {
         const response = await fetch('cra_problems.json');
-        if (!response.ok) throw new Error('Failed to load problems file');
+        if (!response.ok) {
+            throw new Error('Failed to load problems file');
+        }
         const data = await response.json();
+        
         return {
-            practice: data.problems.slice(0, 2),
-            test: data.problems.slice(2)
+            practice: data.problems.slice(0, 2), // First 2 problems as practice
+            test: data.problems.slice(2)        // Rest as test problems
         };
+        
     } catch (error) {
         console.error('Error loading problems:', error);
         return {
-            practice: [{ "words": ["coin", "quick", "spoon"], "solutions": ["silver", "silver dollar"], "regex": ["silver( dollar)?", "silverdollar"] }],
-            test: [{ "words": ["age", "mile", "sand"], "solutions": ["stone"], "regex": ["stone"] }]
+            practice: [
+                {
+                    "words": ["coin", "quick", "spoon"],
+                    "solutions": ["silver", "silver dollar"],
+                    "regex": ["silver( dollar)?", "silverdollar"]
+                }
+            ],
+            test: [
+                {
+                    "words": ["age", "mile", "sand"],
+                    "solutions": ["stone"],
+                    "regex": ["stone"]
+                }
+            ]
         };
     }
 }

@@ -11,3 +11,7 @@ science@main-pi:~/Desktop/Shortcuts/html/exp_data $ chmod 777 .
 science@main-pi:~/Desktop/Shortcuts/html/exp_data $ mkdir crat
 science@main-pi:~/Desktop/Shortcuts/html/exp_data $ chmod 777 crat
 science@main-pi:~/Desktop/Shortcuts/html/exp_data $ 
+
+
+# save here:
+/home/science/lamp-docker/html
