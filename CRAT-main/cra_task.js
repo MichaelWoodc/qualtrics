@@ -13,8 +13,6 @@ const jsPsych = initJsPsych({
         } catch (err) {
             console.error("Save error:", err);
         }
-
-        showDownloadScreen();
     }
 });
 
@@ -101,64 +99,7 @@ async function loadProblems() {
     }
 }
 
-// Function to show download screen with SPSS-compatible CSV
-function showDownloadScreen() {
-    const data = jsPsych.data.get().values();
-    const csvData = convertToSPSS(data);
-    const blob = new Blob([csvData], {type: 'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    
-    document.getElementById('jspsych-target').innerHTML = `
-        <div class="jspsych-content" style="text-align: center;">
-            <h1>Experiment Complete</h1>
-            <p>Thank you for participating!</p>
-            <p>Your SPSS-compatible data is ready to download.</p>
-            <a id="download-btn" href="${url}" download="cra_task_data.csv" 
-               style="display: inline-block; padding: 15px 30px; background-color: #4CAF50; 
-               color: white; text-decoration: none; border-radius: 5px; font-size: 18px; margin: 20px 0;">
-               Download Data (CSV for SPSS)
-            </a>
-        </div>
-    `;
-}
 
-// Function to convert to SPSS-compatible CSV
-function convertToSPSS(data) {
-    const flattened = [];
-    
-    data.forEach(trial => {
-        if (trial.phase) {
-            const row = {
-                phase: trial.phase,
-                problem_number: trial.problem_number,
-                words: trial.words ? trial.words.join('|') : '',
-                solutions: trial.solutions ? trial.solutions.join('|') : '',
-                solved: trial.solved ? 1 : 0,
-                rt: trial.rt || '',
-                timed_out: trial.timed_out ? 1 : 0,
-                response: trial.response?.Q0 || '',
-                correct: trial.correct ? 1 : 0
-            };
-            
-            flattened.push(row);
-        }
-    });
-    
-    const headers = Object.keys(flattened[0]);
-    let csv = headers.join(',') + '\n';
-    
-    flattened.forEach(row => {
-        csv += headers.map(header => {
-            let value = row[header] !== undefined ? row[header] : '';
-            if (typeof value === 'string' && value.includes(',')) {
-                return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-        }).join(',') + '\n';
-    });
-    
-    return csv;
-}
 
 // Custom progress bar HTML
 const progressBarHTML = `
