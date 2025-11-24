@@ -36,7 +36,6 @@ const jsPsych = initJsPsych({
 
 // ===========================================================
 // SAVE DATA TO YOURSERVER
-// If I need the info, save it here: /home/science/lamp-docker/html
 // ===========================================================
 
 // Get participant ID from Qualtrics (PROLIFIC_PID, workerId, etc.)
@@ -90,29 +89,24 @@ async function loadProblems() {
         }
         const data = await response.json();
         
-        return {
-            practice: data.problems.slice(0, 2), // First 2 problems as practice
-            test: data.problems.slice(2)        // Rest as test problems
-        };
+        // Return all problems as test (no practice)
+        return data.problems;
         
     } catch (error) {
         console.error('Error loading problems:', error);
-        return {
-            practice: [
-                {
-                    "words": ["coin", "quick", "spoon"],
-                    "solutions": ["silver", "silver dollar"],
-                    "regex": ["silver( dollar)?", "silverdollar"]
-                }
-            ],
-            test: [
-                {
-                    "words": ["age", "mile", "sand"],
-                    "solutions": ["stone"],
-                    "regex": ["stone"]
-                }
-            ]
-        };
+        // Return some default test problems if file fails to load
+        return [
+            {
+                "words": ["age", "mile", "sand"],
+                "solutions": ["stone"],
+                "regex": ["stone"]
+            },
+            {
+                "words": ["apple", "family", "house"],
+                "solutions": ["tree"],
+                "regex": ["tree"]
+            }
+        ];
     }
 }
 
@@ -136,19 +130,6 @@ function updateProgressBar(timeLeft, totalTime) {
     }
 }
 
-// Simple start screen (since instructions are in Qualtrics)
-const startScreen = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-        <div class="jspsych-content" style="text-align: center;">
-            <h2>CRA Task</h2>
-            <p>The task is about to begin.</p>
-            <p>You will complete a few practice problems first, followed by the main task.</p>
-            <p>Click "Start" when you're ready to begin.</p>
-        </div>
-    `,
-    choices: ['Start']
-};
 
 // Fixation cross
 const fixation = {
@@ -159,7 +140,7 @@ const fixation = {
 };
 
 // Function to create CRA trial
-function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
+function createCRATrial(problem, problemIndex, totalProblems) {
     let showAnswerScreen = false;
     let firstKey = ""; // store the first key pressed
 
@@ -184,7 +165,7 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                     words: problem.words,
                     solutions: problem.solutions,
                     regex: problem.regex,
-                    phase: isPractice ? 'practice' : 'test',
+                    phase: 'test',
                     problem_number: problemIndex + 1
                 },
                 on_start: function(trial) {
@@ -250,7 +231,7 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
         }],
         trial_duration: 7000,
         data: {
-            phase: isPractice ? 'practice' : 'test',
+            phase: 'test',
             problem_number: problemIndex + 1
         },
         on_load: function() {
@@ -306,40 +287,19 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
     };
 }
 
-// Break screen
-const breakScreen = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `<div class="jspsych-content">
-        <h2>Practice Complete</h2>
-        <p>You have completed the practice problems.</p>
-        <p>Click Continue to begin the main task.</p>
-    </div>`,
-    choices: ['Continue']
-};
-
 // Main experiment function
 async function runExperiment() {
     try {
         // Load problems from JSON file
-        const craProblems = await loadProblems();
+        const problems = await loadProblems();
         
         // Create timeline - start with simple start screen
-        const timeline = [startScreen];
+        const timeline = [];
 
-        // Add practice trials if they exist
-        if (craProblems.practice && craProblems.practice.length > 0) {
-            craProblems.practice.forEach((problem, index) => {
-                timeline.push(createCRATrial(problem, true, index, craProblems.practice.length));
-            });
-            timeline.push(breakScreen);
-        }
-
-        // Add test trials
-        if (craProblems.test && craProblems.test.length > 0) {
-            craProblems.test.forEach((problem, index) => {
-                timeline.push(createCRATrial(problem, false, index, craProblems.test.length));
-            });
-        }
+        // Add all problems as test trials
+        problems.forEach((problem, index) => {
+            timeline.push(createCRATrial(problem, index, problems.length));
+        });
 
         // Start the experiment
         jsPsych.run(timeline);
