@@ -1,10 +1,69 @@
 // Initialize jsPsych
 const jsPsych = initJsPsych({
     display_element: 'jspsych-target',
-    on_finish: function() {
+    on_finish: async function() {
+
+        // Add subject before saving
+        jsPsych.data.get().addToLast({ participant: sbj_id });
+
+        try {
+            await save_data_json();
+            await save_data_csv();
+            console.log("Data saved");
+        } catch (err) {
+            console.error("Save error:", err);
+        }
+
         showDownloadScreen();
     }
 });
+
+// ===========================================================
+// SAVE DATA TO YOURSERVER
+// ===========================================================
+
+// Get participant ID from Qualtrics (PROLIFIC_PID, workerId, etc.)
+const urlParams = new URLSearchParams(window.location.search);
+const sbj_id = urlParams.get("workerId") 
+    || urlParams.get("PROLIFIC_PID") 
+    || "anon_" + Math.floor(Math.random() * 100000);
+
+// Your PHP endpoint
+const save_url = "https://michaelwoodcock.duckdns.org/exp_data/save_data.php";
+
+// Server directory where files go (e.g. /exp_data/CRAT_task/)
+const data_dir = "CRAT_task";
+
+// Final filenames
+const file_json = `${sbj_id}.json`;
+const file_csv = `${sbj_id}.csv`;
+
+// Save JSON
+function save_data_json() {
+    return jQuery.ajax({
+        type: "POST",
+        url: save_url,
+        data: {
+            data_dir: data_dir,
+            file_name: file_json,
+            exp_data: jsPsych.data.get().json()
+        }
+    });
+}
+
+// Save CSV
+function save_data_csv() {
+    return jQuery.ajax({
+        type: "POST",
+        url: save_url,
+        data: {
+            data_dir: data_dir,
+            file_name: file_csv,
+            exp_data: jsPsych.data.get().csv()
+        }
+    });
+}
+
 
 // Function to load JSON data
 async function loadProblems() {
