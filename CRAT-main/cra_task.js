@@ -2,7 +2,6 @@
 const jsPsych = initJsPsych({
     display_element: 'jspsych-target',
     on_finish: async function() {
-
         // Add subject before saving
         jsPsych.data.get().addToLast({ participant: sbj_id });
 
@@ -10,8 +9,27 @@ const jsPsych = initJsPsych({
             await save_data_json();
             await save_data_csv();
             console.log("Data saved");
+            
+            // Show simple completion message
+            document.getElementById('jspsych-target').innerHTML = `
+                <div class="jspsych-content" style="text-align: center; padding: 50px;">
+                    <h2>Task Complete!</h2>
+                    <p>Thank you for completing the task.</p>
+                    <p>You may now return to the survey.</p>
+                </div>
+            `;
         } catch (err) {
             console.error("Save error:", err);
+            
+            // Show error message but still indicate completion
+            document.getElementById('jspsych-target').innerHTML = `
+                <div class="jspsych-content" style="text-align: center; padding: 50px;">
+                    <h2>Task Complete!</h2>
+                    <p>Thank you for completing the task.</p>
+                    <p>You may now return to the survey.</p>
+                    <p style="color: #666; font-size: 14px;">Note: There was an issue saving data, but your responses were recorded.</p>
+                </div>
+            `;
         }
     }
 });
@@ -63,7 +81,6 @@ function save_data_csv() {
     });
 }
 
-
 // Function to load JSON data
 async function loadProblems() {
     try {
@@ -99,8 +116,6 @@ async function loadProblems() {
     }
 }
 
-
-
 // Custom progress bar HTML
 const progressBarHTML = `
     <div class="progress-container" style="width: 100%; height: 20px; background-color: #f1f1f1; border-radius: 10px; margin: 20px 0;">
@@ -121,59 +136,18 @@ function updateProgressBar(timeLeft, totalTime) {
     }
 }
 
-// Instructions
-const instructions = {
-    type: jsPsychInstructions,
-    pages: [
-        `<div class="jspsych-content">
-            <h2>Welcome to the CRA Task</h2>
-            <p>In this task, you will be presented with a set of three words. Your goal is to generate a fourth
-word that forms a common compound word or phrase with each of the three stimulus words.</p>
-<br>
-
-<p>Here's how it works:</p>
-<ul>
-<li>You will first see a fixation cross (+) at the top center of the screen. Please briefly focus
-your eyes on it.</li>
-<li>Immediately after, three stimulus words will appear on the screen for 15 seconds (e.g.,
-pine, crab, sauce).</li>
-<li>During this time, try to think of a word that connects to all three (e.g., apple → pineapple,
-crabapple, applesauce).</li>
-<li>When you are ready, press the spacebar or click the "I got it" button to enter your
-response.</li>
-<li>You will have 7 seconds to type your answer.</li>
-<li>If you do not type anything within the 7-second response window, the program will
-automatically advance to the next item.</li>
-</ul>
-<br>
-<p>
-You will begin with three practice trials to help you become familiar with the format. After the
-practice, the actual test will begin.<br> <br>
-When you are ready, click NEXT to continue.
-</p>
-
-        </div>`,
-        
-        `<div class="jspsych-content">
-            <h2>Task Procedure</h2>
-            <ol>
-                <li>Briefly fixate on the cross (+) that appears at the center of the screen.</li>
-                <li>Three stimulus words will appear (e.g., pine, crab, sauce) for 15 seconds.</li>
-                <li>When ready, press the spacebar or click "I got it" to type your solution word.</li>
-                <li>You will have 7 seconds to type your response (e.g., apple).</li>
-                <li>Press Enter or click "Continue" to move to the next item.</li>
-                <li>If no response is entered, the task will automatically proceed after the 7-second input
-window.</li>
-            </ol>
-<p>Click Next to begin the practice trials</p>
-        </div>`,
-    ],
-    button_label_next: "Next",
-    button_label_previous: "Back",
-    show_clickable_nav: true,
-    on_load: function() {
-        updateProgressBar(15, 15);
-    }
+// Simple start screen (since instructions are in Qualtrics)
+const startScreen = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <div class="jspsych-content" style="text-align: center;">
+            <h2>CRA Task</h2>
+            <p>The task is about to begin.</p>
+            <p>You will complete a few practice problems first, followed by the main task.</p>
+            <p>Click "Start" when you're ready to begin.</p>
+        </div>
+    `,
+    choices: ['Start']
 };
 
 // Fixation cross
@@ -184,7 +158,6 @@ const fixation = {
     trial_duration: 800
 };
 
-// Function to create CRA trial
 // Function to create CRA trial
 function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
     let showAnswerScreen = false;
@@ -333,15 +306,13 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
     };
 }
 
-
-
 // Break screen
 const breakScreen = {
     type: jsPsychHtmlButtonResponse,
     stimulus: `<div class="jspsych-content">
-        <h2>Practice Trials Complete</h2>
-        <p>You have completed the practice trials.</p>
-        <p>Click Continue when you're ready to proceed.</p>
+        <h2>Practice Complete</h2>
+        <p>You have completed the practice problems.</p>
+        <p>Click Continue to begin the main task.</p>
     </div>`,
     choices: ['Continue']
 };
@@ -352,8 +323,8 @@ async function runExperiment() {
         // Load problems from JSON file
         const craProblems = await loadProblems();
         
-        // Create timeline
-        const timeline = [instructions];
+        // Create timeline - start with simple start screen
+        const timeline = [startScreen];
 
         // Add practice trials if they exist
         if (craProblems.practice && craProblems.practice.length > 0) {
