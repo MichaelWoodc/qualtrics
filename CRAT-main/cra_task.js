@@ -199,12 +199,12 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                     return `
                         <div class="cra-container">
                             <div class="problem-counter">Problem ${problemIndex + 1} of ${totalProblems}</div>
-                            <div class="cra-words">${problem.words.join("<br>")}</div>
+                            <div class="cra-words" id="cra-words">${problem.words.join("<br>")}</div>
                             ${progressBarHTML}
                         </div>
                     `;
                 },
-                choices: "ALL_KEYS",   // any key press triggers
+                choices: "ALL_KEYS",
                 trial_duration: 15000,
                 data: {
                     words: problem.words,
@@ -215,7 +215,6 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                 },
                 on_start: function(trial) {
                     showAnswerScreen = false;
-
                     let timeLeft = 15.0;
                     this.timerInterval = setInterval(() => {
                         timeLeft -= 0.1;
@@ -229,19 +228,26 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                     if (data.response !== null && data.response !== undefined) {
                         showAnswerScreen = true;
 
-                        // Convert to character if possible; fallback to string
+                        // Convert to character if possible
+                        let keyChar = "";
                         try {
                             if (jsPsych?.pluginAPI?.convertKeyCodeToKeyCharacter) {
-                                firstKey = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response) || "";
+                                keyChar = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response) || "";
                             } else {
-                                firstKey = String(data.response) || "";
+                                keyChar = String(data.response) || "";
                             }
                         } catch (e) {
-                            firstKey = String(data.response) || "";
+                            keyChar = String(data.response) || "";
                         }
 
-                        // Log for verification
-                        console.log("First key captured:", firstKey);
+                        // Only keep printable single characters (letters, numbers, punctuation)
+                        if (keyChar.length === 1 && keyChar.match(/^[\w\d\p{P}]$/u)) {
+                            firstKey = keyChar;
+                        } else {
+                            firstKey = ""; // ignore non-text keys like Shift, Enter
+                        }
+
+                        console.log("First key captured:", keyChar, "Stored:", firstKey);
                     }
 
                     data.solved = showAnswerScreen;
@@ -265,7 +271,7 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                     </div>
                 `;
             },
-            placeholder: "Type your answer...", // visible placeholder; we'll set value via DOM
+            placeholder: "Type your answer...",
             name: "Q0"
         }],
         trial_duration: 7000,
@@ -274,12 +280,12 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
             problem_number: problemIndex + 1
         },
         on_load: function() {
-            // Prefill the input by directly setting the DOM value
             const input = document.querySelector('input[type="text"]');
             if (input) {
-                input.value = firstKey || "";
-                // Move cursor to end
-                input.setSelectionRange(input.value.length, input.value.length);
+                if (firstKey) {
+                    input.value = firstKey;
+                    input.setSelectionRange(input.value.length, input.value.length);
+                }
                 input.focus();
             }
             console.log("Prefilled input value:", firstKey);
@@ -318,22 +324,14 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
         }
     };
 
-    // Return a dynamic timeline that conditionally includes the answer screen
     return {
         timeline: [
-            {
-                timeline: trial.timeline
-            },
-            {
-                timeline: [answerScreen],
-                conditional_function: function() {
-                    // Only show answer screen if participant typed
-                    return showAnswerScreen;
-                }
-            }
+            { timeline: trial.timeline },
+            { timeline: [answerScreen], conditional_function: () => showAnswerScreen }
         ]
     };
 }
+
 
 
 // Break screen
