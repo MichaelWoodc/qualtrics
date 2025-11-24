@@ -184,16 +184,17 @@ const fixation = {
 };
 
 // Function to create CRA trial
+// Function to create CRA trial
 function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
-    // Store whether we should show the answer screen
     let showAnswerScreen = false;
-    
-    // Create the basic trial structure
+    let firstKey = ""; // store the first key pressed
+
+    // Word presentation trial
     const trial = {
         timeline: [
             { ...fixation },
             {
-                type: jsPsychHtmlButtonResponse,
+                type: jsPsychHtmlKeyboardResponse,
                 stimulus: function() {
                     return `
                         <div class="cra-container">
@@ -203,7 +204,7 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                         </div>
                     `;
                 },
-                choices: ['I Got It'],
+                choices: "ALL_KEYS",   // any key press triggers
                 trial_duration: 15000,
                 data: {
                     words: problem.words,
@@ -213,56 +214,46 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                     problem_number: problemIndex + 1
                 },
                 on_start: function(trial) {
-                    showAnswerScreen = false; // Reset for each trial
-                    
+                    showAnswerScreen = false;
+
                     let timeLeft = 15.0;
                     this.timerInterval = setInterval(() => {
                         timeLeft -= 0.1;
                         updateProgressBar(timeLeft, 15);
                         if (timeLeft <= 0) clearInterval(this.timerInterval);
                     }, 100);
-
-                    // Keyboard listener
-                    this.keyboardListener = jsPsych.pluginAPI.getKeyboardResponse({
-                        callback_function: () => {
-                            showAnswerScreen = true;
-                            jsPsych.finishTrial();
-                        },
-                        valid_responses: [' '],
-                        rt_method: 'date',
-                        persist: false,
-                        allow_held_key: false
-                    });
-                    
-                    // Button click handler
-                    this.buttonClickListener = (e) => {
-                        if (e.target.classList.contains('jspsych-btn')) {
-                            showAnswerScreen = true;
-                            jsPsych.finishTrial();
-                        }
-                    };
-                    document.addEventListener('click', this.buttonClickListener);
                 },
                 on_finish: function(data) {
                     clearInterval(this.timerInterval);
-                    jsPsych.pluginAPI.cancelKeyboardResponse(this.keyboardListener);
-                    document.removeEventListener('click', this.buttonClickListener);
-                    
+
+                    if (data.response !== null && data.response !== undefined) {
+                        showAnswerScreen = true;
+
+                        // Convert to character if possible; fallback to string
+                        try {
+                            if (jsPsych?.pluginAPI?.convertKeyCodeToKeyCharacter) {
+                                firstKey = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response) || "";
+                            } else {
+                                firstKey = String(data.response) || "";
+                            }
+                        } catch (e) {
+                            firstKey = String(data.response) || "";
+                        }
+
+                        // Log for verification
+                        console.log("First key captured:", firstKey);
+                    }
+
                     data.solved = showAnswerScreen;
                     data.rt = data.rt || 15000;
                     data.timed_out = !showAnswerScreen;
-                    data.response = null;
                     data.correct = false;
-                },
-                on_load: function() {
-                    // Focus the button for keyboard accessibility
-                    document.querySelector('.jspsych-btn').focus();
                 }
             }
         ]
     };
 
-    // Create the answer screen (but don't add it yet)
+    // Answer input screen
     const answerScreen = {
         type: jsPsychSurveyText,
         questions: [{
@@ -271,18 +262,27 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                     <div style="text-align: center;">
                         <p>Please enter your solution:</p>
                         ${progressBarHTML}
-                        <div style="margin-top: 20px;">
-                            <button class="jspsych-btn" id="submit-solution">Submit</button>
-                            <button class="jspsych-btn" id="skip-solution" style="background-color: #f44336;">Skip</button>
-                        </div>
                     </div>
                 `;
-            }
+            },
+            placeholder: "Type your answer...", // visible placeholder; we'll set value via DOM
+            name: "Q0"
         }],
         trial_duration: 7000,
         data: {
             phase: isPractice ? 'practice' : 'test',
             problem_number: problemIndex + 1
+        },
+        on_load: function() {
+            // Prefill the input by directly setting the DOM value
+            const input = document.querySelector('input[type="text"]');
+            if (input) {
+                input.value = firstKey || "";
+                // Move cursor to end
+                input.setSelectionRange(input.value.length, input.value.length);
+                input.focus();
+            }
+            console.log("Prefilled input value:", firstKey);
         },
         on_start: function(trial) {
             let timeLeft = 7.0;
@@ -299,26 +299,9 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
             trial.data.words = prev.words;
             trial.data.solutions = prev.solutions;
             trial.data.regex = prev.regex;
-
-            this.buttonHandlers = setTimeout(() => {
-                document.getElementById('submit-solution').addEventListener('click', () => {
-                    const response = document.querySelector('input[type="text"]').value;
-                    jsPsych.finishTrial({ response: { Q0: response } });
-                });
-
-                document.getElementById('skip-solution').addEventListener('click', () => {
-                    jsPsych.finishTrial({ response: { Q0: "" } });
-                });
-            }, 100);
-            
-            // Focus the input field for better UX
-            setTimeout(() => {
-                document.querySelector('input[type="text"]').focus();
-            }, 50);
         },
         on_finish: function(data) {
             clearInterval(this.timerInterval);
-            clearTimeout(this.buttonHandlers);
 
             if (this.timeout) {
                 data.timed_out = true;
@@ -327,10 +310,11 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
                 return;
             }
 
-            const response = (data.response?.Q0 || "").toLowerCase().trim();
+            const responseText = (data.response?.Q0 ?? "").trim();
             const regexPatterns = jsPsych.data.get().last(1).values()[0].regex;
-            data.correct = regexPatterns.some(pattern => new RegExp(`^${pattern}$`, 'i').test(response));
+            data.correct = regexPatterns.some(pattern => new RegExp(`^${pattern}$`, 'i').test(responseText));
             data.timed_out = false;
+            data.solved = responseText.length > 0;
         }
     };
 
@@ -338,21 +322,19 @@ function createCRATrial(problem, isPractice, problemIndex, totalProblems) {
     return {
         timeline: [
             {
-                timeline: trial.timeline,
-                conditional_function: function() {
-                    return true; // Always show the word display
-                }
+                timeline: trial.timeline
             },
             {
                 timeline: [answerScreen],
                 conditional_function: function() {
-                    // Only show answer screen if participant responded
+                    // Only show answer screen if participant typed
                     return showAnswerScreen;
                 }
             }
         ]
     };
 }
+
 
 // Break screen
 const breakScreen = {
