@@ -12,6 +12,12 @@ const jsPsych = initJsPsych({
         } catch (err) {
             console.error("Save error:", err);
         }
+        
+        // Send completion message to Qualtrics parent window
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage("CRAT_FINISHED", "*");
+            console.log("Sent CRAT_FINISHED message to Qualtrics");
+        }
     }
 });
 
@@ -19,9 +25,10 @@ const jsPsych = initJsPsych({
 // SAVE DATA TO YOURSERVER
 // ===========================================================
 
-// Get participant ID from Qualtrics (PROLIFIC_PID, workerId, etc.)
+// Get participant ID from URL parameters (passed from Qualtrics)
 const urlParams = new URLSearchParams(window.location.search);
-const sbj_id = urlParams.get("workerId") 
+const sbj_id = urlParams.get("sbj_id") 
+    || urlParams.get("workerId") 
     || urlParams.get("PROLIFIC_PID") 
     || "anon_" + Math.floor(Math.random() * 100000);
 
@@ -293,6 +300,11 @@ async function runExperiment() {
                 <p>Please try refreshing the page.</p>
             </div>
         `;
+        
+        // Even on error, send completion message to Qualtrics
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage("CRAT_FINISHED", "*");
+        }
     }
 }
 
