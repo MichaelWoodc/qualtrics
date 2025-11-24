@@ -1,0 +1,18 @@
+science@main-pi:~/Desktop $ cd /home/science/Desktop/Shortcuts/html/exp_data
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ pwd
+/home/science/Desktop/Shortcuts/html/exp_data
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ touch index.html
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ echo "DirectoryIndex index.html" >> .htaccess
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ nano save_data.php
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ nano /etc/nanorc
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ sudo nano /etc/nanorc
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ sudo nano /etc/nanorc
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ chmod 772
+chmod: missing operand after â€˜772â€™
+Try 'chmod --help' for more information.
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ chmod 772 /Desktop/Shortcuts/html/exp_data
+chmod: cannot access '/Desktop/Shortcuts/html/exp_data': No such file or directory
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ chmod 777 .
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ mkdir crat
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ chmod 777 crat
+science@main-pi:~/Desktop/Shortcuts/html/exp_data $ 
