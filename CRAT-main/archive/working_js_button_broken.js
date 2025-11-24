@@ -28,6 +28,7 @@ Qualtrics.SurveyEngine.addOnload(function () {
 
     /* ------------------------------------------------------------------
        2. Build full-screen iframe that loads your CRAT experiment
+          AND passes Qualtrics participant ID into the iframe
     ------------------------------------------------------------------ */
     var sbj_id = "${e://Field/workerId}" || "anon_" + Math.floor(Math.random() * 100000);
 
@@ -40,25 +41,35 @@ Qualtrics.SurveyEngine.addOnload(function () {
     iframe.style.height = "100%";
     iframe.style.border = "none";
     iframe.style.zIndex = "9999";
-    iframe.id = "crat-iframe";
 
     document.body.appendChild(iframe);
 
     /* ------------------------------------------------------------------
-       3. Listen for "experiment finished" message and auto-advance
+       3. Listen for “experiment finished” message from inside iframe
+          Your internal code will call: window.parent.postMessage("CRAT_FINISHED","*")
     ------------------------------------------------------------------ */
     window.addEventListener("message", function(e){
         if (e.data === "CRAT_FINISHED") {
-            console.log("CRAT experiment reports completion - auto-advancing");
-            
-            // Remove the iframe
-            var iframe = document.getElementById("crat-iframe");
-            if (iframe) iframe.remove();
-            
-            // Auto-advance to next question
-            setTimeout(function() {
+            console.log("CRAT experiment reports completion");
+
+            // Re-query Next button to ensure it exists
+            var nav = document.getElementById("NextButton");
+            if (nav) nav.style.display = "inline-block";
+
+            // Auto-click (optional)
+            try {
                 qthis.clickNextButton();
-            }, 5000); // Small delay to ensure cleanup is done
+            } catch (err) {
+                console.warn("Failed to auto-click Next button, participant can click manually.");
+            }
         }
     });
+});
+
+Qualtrics.SurveyEngine.addOnReady(function () {
+    console.log("CRA Task now running fullscreen.");
+});
+
+Qualtrics.SurveyEngine.addOnUnload(function () {
+    console.log("Leaving CRA Task question.");
 });
