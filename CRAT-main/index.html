@@ -11,7 +11,8 @@
     <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css">
     <style>
         body {
-            /* background-color: #f5f5f5; */
+            background-color: #121212; /* dark background */
+            color: #e0e0e0;            /* light text */
             margin: 0;
             padding: 0;
             min-height: 100vh;
@@ -19,6 +20,7 @@
             justify-content: center;
             align-items: center;
         }
+
         #jspsych-target {
             width: 100%;
             height: 100%;
@@ -26,21 +28,23 @@
             justify-content: center;
             align-items: center;
         }
+
         .fixation {
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 100px;
             font-weight: bold;
-            color: #333;
+            color: #e0e0e0; /* light text */
             height: 100%;
             text-align: center;
         }
+
         .cra-container {
             display: flex;
             flex-direction: column;
-            justify-content: center; /* center vertically */
-            align-items: center;     /* center horizontally */
+            justify-content: center;
+            align-items: center;
             height: 100%;
             text-align: center;
         }
@@ -48,42 +52,49 @@
         .cra-words {
             font-size: 28px;
             line-height: 2;
-            color: #333;
+            color: #f5f5f5; /* brighter text */
             text-align: center;
         }
+
         .timer {
             font-size: 20px;
             margin: 20px 0;
-            color: #666;
+            color: #b0b0b0; /* muted gray */
         }
+
         .problem-counter {
             font-size: 18px;
             margin-bottom: 20px;
-            color: #666;
+            color: #b0b0b0;
         }
+
         .jspsych-btn {
             font-size: 16px;
             padding: 10px 20px;
             margin: 0 10px;
-            background-color: #4CAF50;
-            color: white;
+            background-color: #1e88e5; /* blue button */
+            color: #fff;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
+
         .jspsych-btn:hover {
-            background-color: #45a049;
+            background-color: #1565c0; /* darker blue on hover */
         }
+
         .jspsych-content {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            /* background-color: white; */
-            /* box-shadow: 0 2px 10px rgba(0,0,0,0.1); */
-            /* border-radius: 5px; */
+            background-color: #1e1e1e; /* dark card background */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+            border-radius: 5px;
             text-align: center;
         }
     </style>
+
 </head>
 <body>
     <div id="jspsych-target"></div>
