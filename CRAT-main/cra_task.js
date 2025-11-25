@@ -257,20 +257,28 @@ function createCRATrial(problem, problemIndex, totalProblems) {
         on_finish: function(data) {
             clearInterval(this.timerInterval);
 
+            const regexPatterns = jsPsych.data.get().last(1).values()[0].regex;
+            let responseText;
+
             if (this.timeout) {
                 data.timed_out = true;
-                data.response = { Q0: data.current_input || "" }; // Use captured input instead of empty string
-                data.correct = regexPatterns.some(pattern => new RegExp(`^${pattern}$`, 'i').test(responseText));
-                // data.correct = false // Disable this and use the above line to grade timed-out responses
-                return;
+                // Use captured input instead of empty string
+                responseText = (data.current_input || "").trim();
+                data.response = { Q0: responseText };
+            } else {
+                data.timed_out = false;
+                responseText = (data.response?.Q0 ?? "").trim();
             }
 
-            const responseText = (data.response?.Q0 ?? "").trim();
-            const regexPatterns = jsPsych.data.get().last(1).values()[0].regex;
-            data.correct = regexPatterns.some(pattern => new RegExp(`^${pattern}$`, 'i').test(responseText));
-            data.timed_out = false;
+            // Grade both timeout and non-timeout answers the same way
+            data.correct = regexPatterns.some(pattern =>
+                new RegExp(`^${pattern}$`, 'i').test(responseText)
+            );
+
+            // Mark whether participant actually typed something
             data.solved = responseText.length > 0;
         }
+
     };
 
     return {
