@@ -17,10 +17,8 @@ Qualtrics.SurveyEngine.addOnload(function () {
 
     var header = document.getElementById("Header");
     var footer = document.getElementById("Footer");
-    var nav = document.getElementById("NextButton");
     if (header) header.style.display = "none";
     if (footer) footer.style.display = "none";
-    if (nav) nav.style.display = "none";
 
     var qc = this.getQuestionContainer();
     qc.style.margin = "0";
@@ -30,9 +28,7 @@ Qualtrics.SurveyEngine.addOnload(function () {
 
     /* ------------------------------------------------------------------
        2. Build full-screen iframe that loads your CRAT experiment
-          AND passes Qualtrics participant ID into the iframe
     ------------------------------------------------------------------ */
-
     var sbj_id = "${e://Field/workerId}" || "anon_" + Math.floor(Math.random() * 100000);
 
     var iframe = document.createElement("iframe");
@@ -44,22 +40,32 @@ Qualtrics.SurveyEngine.addOnload(function () {
     iframe.style.height = "100%";
     iframe.style.border = "none";
     iframe.style.zIndex = "9999";
+    iframe.id = "crat-iframe";
 
     document.body.appendChild(iframe);
 
     /* ------------------------------------------------------------------
-       3. Listen for “experiment finished” message from inside iframe
-          Your internal code will call:  window.parent.postMessage("CRAT_FINISHED","*")
+       3. Listen for "experiment finished" message and auto-advance
     ------------------------------------------------------------------ */
-
     window.addEventListener("message", function(e){
         if (e.data === "CRAT_FINISHED") {
-            console.log("CRAT experiment reports completion");
-            qthis.clickNextButton();
+            console.log("CRAT experiment reports completion - auto-advancing");
+            
+            // Remove the iframe
+            var iframe = document.getElementById("crat-iframe");
+            if (iframe) iframe.remove();
+            
+            // Auto-advance to next question
+            setTimeout(function() {
+                qthis.clickNextButton();
+            }, 500); // Small delay to ensure cleanup is done
         }
     });
 });
 
+    /* ------------------------------------------------------------------
+       This is actually where the javascript code ends in qualtrics, may not need what comes below at all
+    ------------------------------------------------------------------ */
 Qualtrics.SurveyEngine.addOnReady(function () {
     console.log("CRA Task now running fullscreen.");
 });
