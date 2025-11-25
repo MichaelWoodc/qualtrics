@@ -239,6 +239,12 @@ function createCRATrial(problem, problemIndex, totalProblems) {
                 updateProgressBar(timeLeft, 7);
                 if (timeLeft <= 0 && !this.timeout) {
                     this.timeout = true;
+                    
+                    // CAPTURE INPUT VALUE BEFORE TIMEOUT
+                    const input = document.querySelector('input[type="text"]');
+                    const currentInput = input ? input.value.trim() : "";
+                    trial.data.current_input = currentInput; // Store what was in the box
+                    
                     jsPsych.finishTrial();
                 }
             }, 100);
@@ -253,7 +259,7 @@ function createCRATrial(problem, problemIndex, totalProblems) {
 
             if (this.timeout) {
                 data.timed_out = true;
-                data.response = { Q0: "" };
+                data.response = { Q0: data.current_input || "" }; // Use captured input instead of empty string
                 data.correct = false;
                 return;
             }
