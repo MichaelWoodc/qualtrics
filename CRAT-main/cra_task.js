@@ -100,7 +100,7 @@ async function loadProblems() {
 
 // Custom progress bar HTML
 const progressBarHTML = `
-    <div class="progress-container" style="width: 100%; height: 20px; background-color: #f1f1f1; border-radius: 10px; margin: 20px 0;">
+    <div class="progress-container" style="width: 100%; height: 20px; border-radius: 10px; margin: 20px 0;">
         <div id="progress-bar" class="progress-bar" style="height: 100%; width: 100%; background-color: #4CAF50; border-radius: 10px; transition: width 0.1s linear;"></div>
     </div>
     <div id="time-remaining" style="text-align: center; font-size: 16px; margin-bottom: 20px;">15.0s remaining</div>
