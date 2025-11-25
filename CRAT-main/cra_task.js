@@ -260,7 +260,8 @@ function createCRATrial(problem, problemIndex, totalProblems) {
             if (this.timeout) {
                 data.timed_out = true;
                 data.response = { Q0: data.current_input || "" }; // Use captured input instead of empty string
-                data.correct = false;
+                data.correct = regexPatterns.some(pattern => new RegExp(`^${pattern}$`, 'i').test(responseText));
+                // data.correct = false // Disable this and use the above line to grade timed-out responses
                 return;
             }
 
