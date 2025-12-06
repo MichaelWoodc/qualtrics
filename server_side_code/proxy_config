@@ -1,0 +1,16 @@
+###  This is a more permissive example, and this may be able to be modified to be more secure.  I don't recommend using it as is.  
+add_header Access-Control-Allow-Origin *;
+add_header Access-Control-Allow-Methods "GET, HEAD, POST, OPTIONS";
+add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept";
+
+
+### Going to try something more restrictive soon: (untested as of today)
+
+# Only allow requests from the Qualtrics survey domain
+add_header Access-Control-Allow-Origin "https://georgiasouthern.co1.qualtrics.com";
+
+# Only allow POST (for data submission) and OPTIONS (for preflight checks)
+add_header Access-Control-Allow-Methods "POST, OPTIONS";
+
+# Only allow Content-Type header (needed for JSON/form submissions)
+add_header Access-Control-Allow-Headers "Content-Type";
