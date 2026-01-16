@@ -1,48 +1,79 @@
-// Initialize jsPsych
-const jsPsych = initJsPsych({
-    display_element: 'jspsych-target',
-    on_finish: async function() {
-        // Add subject before saving
-        jsPsych.data.get().addToLast({ participant: sbj_id });
+/****************************************************
+ * GLOBAL SETTINGS
+ ****************************************************/
+const PROGRESS_BAR_WIDTH = "30vw";   // <--- your requested width
+const PROGRESS_BAR_HEIGHT = "20px";  // fixed height
 
+/****************************************************
+ * PROGRESS BAR HTML
+ ****************************************************/
+const progressBarHTML = `
+    <div style="
+        width: ${PROGRESS_BAR_WIDTH};
+        height: ${PROGRESS_BAR_HEIGHT};
+        border: 2px solid white;
+        border-radius: 2px;
+        margin-top: 20px;
+        display: flex;
+        justify-content: flex-start;   /* left-align inner bar */
+        align-items: center;
+        overflow: hidden;              /* clean clipping */
+    ">
+        <div id="progress-bar" style="
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            border-radius: 2px;
+            transition: width 0.1s linear;
+            transform-origin: left center;  /* shrink from left */
+        "></div>
+    </div>
+`;
+
+/****************************************************
+ * PROGRESS BAR UPDATE (SAFE)
+ ****************************************************/
+function updateProgressBar(timeLeft, totalTime) {
+    const bar = document.getElementById("progress-bar");
+    if (!bar) return;
+    const pct = (timeLeft / totalTime) * 100;
+    bar.style.width = pct + "%";
+}
+
+/****************************************************
+ * INITIALIZE JSPsych
+ ****************************************************/
+const jsPsych = initJsPsych({
+    display_element: "jspsych-target",
+    on_finish: async function() {
+        jsPsych.data.get().addToLast({ participant: sbj_id });
         try {
             await save_data_json();
             await save_data_csv();
-            console.log("Data saved");
-        } catch (err) {
-            console.error("Save error:", err);
+        } catch (e) {
+            console.error("Save error:", e);
         }
-        
-        // Send completion message to Qualtrics parent window
         if (window.parent && window.parent !== window) {
             window.parent.postMessage("CRAT_FINISHED", "*");
-            console.log("Sent CRAT_FINISHED message to Qualtrics");
         }
     }
 });
 
-// ===========================================================
-// SAVE DATA TO YOURSERVER
-// ===========================================================
-
-// Get participant ID from URL parameters (passed from Qualtrics)
+/****************************************************
+ * PARTICIPANT ID + SAVE ENDPOINT
+ ****************************************************/
 const urlParams = new URLSearchParams(window.location.search);
-const sbj_id = urlParams.get("sbj_id") 
-    || urlParams.get("workerId") 
-    || urlParams.get("PROLIFIC_PID") 
-    || "anon_" + Math.floor(Math.random() * 100000);
+const sbj_id =
+    urlParams.get("sbj_id") ||
+    urlParams.get("workerId") ||
+    urlParams.get("PROLIFIC_PID") ||
+    "anon_" + Math.floor(Math.random() * 100000);
 
-// Your PHP endpoint
 const save_url = "https://michaelwoodcock.duckdns.org/exp_data/save_data.php";
-
-// Server directory where files go (e.g. /exp_data/CRAT_task/)
 const data_dir = "CRAT_task";
-
-// Final filenames
 const file_json = `${sbj_id}.json`;
 const file_csv = `${sbj_id}.csv`;
 
-// Save JSON
 function save_data_json() {
     return jQuery.ajax({
         type: "POST",
@@ -55,7 +86,6 @@ function save_data_json() {
     });
 }
 
-// Save CSV
 function save_data_csv() {
     return jQuery.ajax({
         type: "POST",
@@ -68,161 +98,107 @@ function save_data_csv() {
     });
 }
 
-// Function to load JSON data
+/****************************************************
+ * LOAD PROBLEMS
+ ****************************************************/
 async function loadProblems() {
     try {
-        const response = await fetch('cra_problems.json');
-        if (!response.ok) {
-            throw new Error('Failed to load problems file');
-        }
+        const response = await fetch("cra_problems.json");
+        if (!response.ok) throw new Error("Failed to load problems");
         const data = await response.json();
-        
-        // Return all problems as test (no practice)
         return data.problems;
-        
-    } catch (error) {
-        console.error('Error loading problems:', error);
-        // Return some default test problems if file fails to load
+    } catch (e) {
+        console.error("Error loading problems:", e);
         return [
-            {
-                "words": ["age", "mile", "sand"],
-                "solutions": ["stone"],
-                "regex": ["stone"]
-            },
-            {
-                "words": ["apple", "family", "house"],
-                "solutions": ["tree"],
-                "regex": ["tree"]
-            }
+            { words: ["age", "mile", "sand"], solutions: ["stone"], regex: ["stone"] },
+            { words: ["apple", "family", "house"], solutions: ["tree"], regex: ["tree"] }
         ];
     }
 }
 
-// Custom progress bar HTML
-const progressBarHTML = `
-    <div class="progress-container" style="width: 100%; height: 20px; border-radius: 10px; margin: 20px 0;">
-        <div id="progress-bar" class="progress-bar" style="height: 100%; width: 100%; background-color: #4CAF50; border-radius: 10px; transition: width 0.1s linear;"></div>
-    </div>
-    <div id="time-remaining" style="text-align: center; font-size: 16px; margin-bottom: 20px;">15.0s remaining</div>
-`;
-
-// Function to update progress bar
-function updateProgressBar(timeLeft, totalTime) {
-    const progressBar = document.getElementById('progress-bar');
-    const timeRemaining = document.getElementById('time-remaining');
-    if (progressBar && timeRemaining) {
-        const percentage = (timeLeft / totalTime) * 100;
-        progressBar.style.width = `${percentage}%`;
-        progressBar.style.backgroundColor = percentage > 50 ? '#4CAF50' : percentage > 20 ? '#FFC107' : '#F44336';
-        timeRemaining.textContent = `${timeLeft.toFixed(1)}s remaining`;
-    }
-}
-
-// Fixation cross
+/****************************************************
+ * FIXATION
+ ****************************************************/
 const fixation = {
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: '<div class="fixation"> <br> + <br><br><br><br><br></div>',
+    stimulus: `<div class="fixation">+</div>`,
     choices: "NO_KEYS",
     trial_duration: 800
 };
 
-// Function to create CRA trial
-function createCRATrial(problem, problemIndex, totalProblems) {
-    let showAnswerScreen = false;
-    let firstKey = ""; // store the first key pressed
+/****************************************************
+ * CREATE CRA TRIAL
+ ****************************************************/
+function createCRATrial(problem, index, total) {
+    let showAnswer = false;
+    let firstKey = "";
 
-    // Word presentation trial
     const trial = {
         timeline: [
-            { ...fixation },
+            fixation,
             {
                 type: jsPsychHtmlKeyboardResponse,
-                stimulus: function() {
-                    return `
-                        <div class="cra-container">
-                            <div class="problem-counter">Problem ${problemIndex + 1} of ${totalProblems}</div>
-                            <div class="cra-words" id="cra-words">${problem.words.join("<br>")}</div>
-                            ${progressBarHTML}
-                        </div>
-                    `;
-                },
+                stimulus: () => `
+                    <div class="cra-container">
+                        <div class="cra-words">${problem.words.join("<br>")}</div>
+                        ${progressBarHTML}
+                    </div>
+                `,
                 choices: "ALL_KEYS",
                 trial_duration: 15000,
                 data: {
                     words: problem.words,
                     solutions: problem.solutions,
                     regex: problem.regex,
-                    phase: 'test',
-                    problem_number: problemIndex + 1
+                    phase: "test",
+                    problem_number: index + 1
                 },
-                on_start: function(trial) {
-                    showAnswerScreen = false;
-                    let timeLeft = 15.0;
-                    this.timerInterval = setInterval(() => {
+                on_start: function() {
+                    showAnswer = false;
+                    let timeLeft = 15;
+                    this.timer = setInterval(() => {
                         timeLeft -= 0.1;
                         updateProgressBar(timeLeft, 15);
-                        if (timeLeft <= 0) clearInterval(this.timerInterval);
+                        if (timeLeft <= 0) clearInterval(this.timer);
                     }, 100);
                 },
                 on_finish: function(data) {
-                    clearInterval(this.timerInterval);
+                    clearInterval(this.timer);
 
-                    if (data.response !== null && data.response !== undefined) {
-                        showAnswerScreen = true;
+                    if (data.response !== null) {
+                        showAnswer = true;
 
-                        // Convert to character if possible
                         let keyChar = "";
                         try {
-                            if (jsPsych?.pluginAPI?.convertKeyCodeToKeyCharacter) {
-                                keyChar = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response) || "";
-                            } else {
-                                keyChar = String(data.response) || "";
-                            }
-                        } catch (e) {
+                            keyChar = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response) || "";
+                        } catch {
                             keyChar = String(data.response) || "";
                         }
 
-                        // Only keep printable single characters (letters, numbers, punctuation)
                         if (keyChar.length === 1 && keyChar.match(/^[\w\d\p{P}]$/u)) {
                             firstKey = keyChar;
-                        } else {
-                            firstKey = ""; // ignore non-text keys like Shift, Enter
                         }
-
-                        console.log("First key captured:", keyChar, "Stored:", firstKey);
                     }
 
-                    data.solved = showAnswerScreen;
-                    data.rt = data.rt || 15000;
-                    data.timed_out = !showAnswerScreen;
-                    data.correct = false;
+                    data.solved = showAnswer;
+                    data.timed_out = !showAnswer;
                 }
             }
         ]
     };
 
-    // Answer input screen
     const answerScreen = {
         type: jsPsychSurveyText,
         questions: [{
-            prompt: function() {
-                return `
-                    <div style="text-align: center;">
-                        <p>Please enter your solution:</p>
-                        ${progressBarHTML}
-                    </div>
-                `;
-            },
-            placeholder: "Type your answer...",
-            name: "Q0"
+            prompt: `<div style="height: 0px;"></div>`,  // placeholder, no bar here
+            name: "Q0",
+            placeholder: ""
         }],
         trial_duration: 7000,
-        data: {
-            phase: 'test',
-            problem_number: problemIndex + 1
-        },
+        data: { phase: "test", problem_number: index + 1 },
+
         on_load: function() {
-            const input = document.querySelector('input[type="text"]');
+            const input = document.querySelector("input[type='text']");
             if (input) {
                 if (firstKey) {
                     input.value = firstKey;
@@ -230,21 +206,22 @@ function createCRATrial(problem, problemIndex, totalProblems) {
                 }
                 input.focus();
             }
-            console.log("Prefilled input value:", firstKey);
+
+            // ⬇️ ADD THE PROGRESS BAR UNDER THE INPUT
+            const barWrapper = document.createElement("div");
+            barWrapper.innerHTML = progressBarHTML;
+            input.insertAdjacentElement("afterend", barWrapper);
         },
+
         on_start: function(trial) {
-            let timeLeft = 7.0;
-            this.timerInterval = setInterval(() => {
+            let timeLeft = 7;
+            this.timer = setInterval(() => {
                 timeLeft -= 0.1;
                 updateProgressBar(timeLeft, 7);
                 if (timeLeft <= 0 && !this.timeout) {
                     this.timeout = true;
-                    
-                    // CAPTURE INPUT VALUE BEFORE TIMEOUT
-                    const input = document.querySelector('input[type="text"]');
-                    const currentInput = input ? input.value.trim() : "";
-                    trial.data.current_input = currentInput; // Store what was in the box
-                    
+                    const input = document.querySelector("input[type='text']");
+                    trial.data.current_input = input ? input.value.trim() : "";
                     jsPsych.finishTrial();
                 }
             }, 100);
@@ -254,74 +231,48 @@ function createCRATrial(problem, problemIndex, totalProblems) {
             trial.data.solutions = prev.solutions;
             trial.data.regex = prev.regex;
         },
-        on_finish: function(data) {
-            clearInterval(this.timerInterval);
 
-            const regexPatterns = jsPsych.data.get().last(1).values()[0].regex;
-            let responseText;
+        on_finish: function(data) {
+            clearInterval(this.timer);
+
+            const regex = data.regex;
+            let responseText = "";
 
             if (this.timeout) {
-                data.timed_out = true;
-                // Use captured input instead of empty string
                 responseText = (data.current_input || "").trim();
                 data.response = { Q0: responseText };
             } else {
-                data.timed_out = false;
-                responseText = (data.response?.Q0 ?? "").trim();
+                responseText = (data.response?.Q0 || "").trim();
             }
 
-            // Grade both timeout and non-timeout answers the same way
-            data.correct = regexPatterns.some(pattern =>
-                new RegExp(`^${pattern}$`, 'i').test(responseText)
-            );
-
-            // Mark whether participant actually typed something
+            data.timed_out = this.timeout === true;
+            data.correct = regex.some(r => new RegExp(`^${r}$`, "i").test(responseText));
             data.solved = responseText.length > 0;
         }
-
     };
+
 
     return {
         timeline: [
             { timeline: trial.timeline },
-            { timeline: [answerScreen], conditional_function: () => showAnswerScreen }
+            { timeline: [answerScreen], conditional_function: () => showAnswer }
         ]
     };
 }
 
-// Main experiment function
+/****************************************************
+ * RUN EXPERIMENT
+ ****************************************************/
 async function runExperiment() {
-    try {
-        // Load problems from JSON file
-        const problems = await loadProblems();
-        
-        // Create timeline - no start screen, just the trials
-        const timeline = [];
+    const problems = await loadProblems();
+    const timeline = [];
 
-        // Add all problems as test trials
-        problems.forEach((problem, index) => {
-            timeline.push(createCRATrial(problem, index, problems.length));
-        });
+    problems.forEach((p, i) => {
+        timeline.push(createCRATrial(p, i, problems.length));
+    });
 
-        // Start the experiment
-        jsPsych.run(timeline);
-        
-    } catch (error) {
-        console.error('Experiment failed to start:', error);
-        document.getElementById('jspsych-target').innerHTML = `
-            <div class="jspsych-content" style="color: red;">
-                <h1>Error Loading Experiment</h1>
-                <p>${error.message}</p>
-                <p>Please try refreshing the page.</p>
-            </div>
-        `;
-        
-        // Even on error, send completion message to Qualtrics
-        if (window.parent && window.parent !== window) {
-            window.parent.postMessage("CRAT_FINISHED", "*");
-        }
-    }
+    jsPsych.run(timeline);
 }
 
-// Start the experiment
 runExperiment();
+c
