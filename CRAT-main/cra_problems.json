@@ -44,61 +44,6 @@
         "words": ["fountain", "baking", "pop"],
         "solutions": ["soda"],
         "regex": ["soda"]
-      },
-      {
-        "words": ["preserve", "ranger", "tropical"],
-        "solutions": ["forest"],
-        "regex": ["forest"]
-      },
-      {
-        "words": ["aid", "rubber", "wagon"],
-        "solutions": ["band"],
-        "regex": ["band"]
-      },
-      {
-        "words": ["flake", "mobile", "cone"],
-        "solutions": ["snow"],
-        "regex": ["snow"]
-      },
-      {
-        "words": ["cracker", "fly", "fighter"],
-        "solutions": ["fire"],
-        "regex": ["fire"]
-      },
-      {
-        "words": ["safety", "cushion", "point"],
-        "solutions": ["pin"],
-        "regex": ["pin"]
-      },
-      {
-        "words": ["cane", "daddy", "plum"],
-        "solutions": ["sugar"],
-        "regex": ["sugar"]
-      },
-      {
-        "words": ["dream", "break", "light"],
-        "solutions": ["day"],
-        "regex": ["day"]
-      },
-      {
-        "words": ["fish", "mine", "rush"],
-        "solutions": ["gold"],
-        "regex": ["gold"]
-      },
-      {
-        "words": ["political", "surprise", "line"],
-        "solutions": ["party"],
-        "regex": ["party"]
-      },
-      {
-        "words": ["measure", "worm", "video"],
-        "solutions": ["tape"],
-        "regex": ["tape"]
-      },
-      {
-        "words": ["high", "district", "house"],
-        "solutions": ["school", "court"],
-        "regex": ["school", "court"]
       }
     ]
   }
