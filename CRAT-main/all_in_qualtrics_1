@@ -4,71 +4,30 @@ const qthis = this;
 qthis.hideNextButton();
 
 /* ============================================================
-   1. HIDE ALL QUALTRICS SKIN
+   FULLSCREEN OVERLAY
    ============================================================ */
-(function hideQualtricsSkin() {
-    let el = qthis.getQuestionContainer().parentElement;
-    while (el && el !== document.body) {
-        const siblings = Array.from(el.parentElement.children);
-        siblings.forEach(sib => {
-            if (sib !== el) {
-                sib.style.display = "none";
-                sib.style.visibility = "hidden";
-                sib.style.opacity = "0";
-                sib.style.height = "0px";
-                sib.style.margin = "0";
-                sib.style.padding = "0";
-            }
-        });
-        el = el.parentElement;
-    }
-
-    document.documentElement.style.background = "#000";
-    document.body.style.background = "#000";
-    document.body.style.color = "#fff";
-    document.body.style.margin = "0";
-    document.body.style.padding = "0";
-    document.body.style.overflow = "hidden";
-})();
+const overlay = document.createElement("div");
+overlay.style.position = "fixed";
+overlay.style.top = "0";
+overlay.style.left = "0";
+overlay.style.width = "100vw";
+overlay.style.height = "100vh";
+overlay.style.background = "#111";
+overlay.style.color = "#fff";
+overlay.style.display = "flex";
+overlay.style.flexDirection = "column";
+overlay.style.alignItems = "center";
+overlay.style.justifyContent = "center";
+overlay.style.fontFamily = "Arial";
+overlay.style.zIndex = "99999";
+document.body.appendChild(overlay);
 
 /* ============================================================
-   2. RESTORE QUALTRICS UI AT END
-   ============================================================ */
-function restoreQualtricsUI() {
-    document.querySelectorAll("body *").forEach(el => {
-        el.style.display = "";
-        el.style.visibility = "";
-        el.style.opacity = "";
-        el.style.height = "";
-        el.style.margin = "";
-        el.style.padding = "";
-    });
-
-    document.body.style.background = "";
-    document.body.style.color = "";
-    document.body.style.overflow = "";
-}
-
-/* ============================================================
-   3. FULLSCREEN EXPERIMENT AREA
-   ============================================================ */
-const qc = qthis.getQuestionContainer();
-qc.innerHTML = "";
-qc.style.width = "100vw";
-qc.style.height = "100vh";
-qc.style.display = "flex";
-qc.style.flexDirection = "column";
-qc.style.alignItems = "center";
-qc.style.justifyContent = "center";
-qc.style.fontFamily = "Arial";
-qc.style.background = "#111";
-qc.style.color = "#fff";
-
-/* ============================================================
-   4. EXPERIMENT SETTINGS
+   EXPERIMENT SETTINGS
    ============================================================ */
 const WORD_TIME = 15000;
 const TYPE_TIME = 7000;
+const FIXATION_TIME = 500;
 
 let problems = [];
 let trialIndex = 0;
@@ -76,8 +35,16 @@ let reactionStart = 0;
 let firstKeyTime = null;
 
 /* ============================================================
-   5. DISPLAY ELEMENTS
+   DISPLAY ELEMENTS
    ============================================================ */
+
+// ⭐ Fixation cross (moved upward)
+const fixation = document.createElement("div");
+fixation.style.fontSize = "80px";
+fixation.style.display = "none";
+fixation.style.marginBottom = "120px";   // move upward
+fixation.innerHTML = "+";
+
 const wordsDiv = document.createElement("div");
 wordsDiv.style.fontSize = "32px";
 wordsDiv.style.textAlign = "center";
@@ -94,11 +61,12 @@ input.style.background = "#222";
 input.style.color = "#fff";
 input.style.border = "2px solid #fff";
 
-qc.appendChild(wordsDiv);
-qc.appendChild(input);
+overlay.appendChild(fixation);
+overlay.appendChild(wordsDiv);
+overlay.appendChild(input);
 
 /* ============================================================
-   6. PROGRESS BAR
+   PROGRESS BAR
    ============================================================ */
 const barOuter = document.createElement("div");
 barOuter.style.width = "30vw";
@@ -113,40 +81,78 @@ barInner.style.background = "#fff";
 barInner.style.transition = "width .1s linear";
 
 barOuter.appendChild(barInner);
-qc.appendChild(barOuter);
+overlay.appendChild(barOuter);
 
 function updateBar(timeLeft,total){
  barInner.style.width = (timeLeft/total*100)+"%";
 }
 
-/* ============================================================
-   7. FIND QUALTRICS QUESTION INDEX
-   ============================================================ */
-let qualIndex = Array.from(document.querySelectorAll(".QuestionOuter")).indexOf(qthis.getQuestionContainer());
-if (qualIndex < 0) qualIndex = 0;  // fallback
-
-/* ============================================================
-   8. WRITE TO QUALTRICS FIELDS
-   ============================================================ */
-function writeToQualtrics(resp, rt, tt){
- const questions = document.querySelectorAll(".QuestionOuter");
- if(!questions[qualIndex]) return;
-
- const inputs = Array.from(questions[qualIndex].querySelectorAll("input[type='text']"));
- if(inputs.length >= 3){
-  console.log(`Trial ${trialIndex+1} -> response: "${resp}", rt: ${rt}, typing: ${tt}`);
-  inputs[0].value = resp || "";
-  inputs[1].value = rt || "";
-  inputs[2].value = tt || "";
- } else {
-  console.warn("Not enough inputs for trial", qualIndex, inputs);
- }
-
- qualIndex++;  // move to next question for the next trial
+function resetBar() {
+    barInner.style.transition = "none";
+    barInner.style.width = "100%";
+    void barInner.offsetWidth;
+    barInner.style.transition = "width .1s linear";
 }
 
 /* ============================================================
-   9. WORD PHASE
+   DETECT RESPONSE ROWS
+   ============================================================ */
+let responseRows = [];
+
+function detectResponseRows() {
+    const all = Array.from(document.querySelectorAll(".QuestionOuter"));
+    responseRows = all
+        .map(q => {
+            const inputs = q.querySelectorAll("input[type='text']");
+            return inputs.length === 3 ? inputs : null;
+        })
+        .filter(x => x !== null);
+}
+
+detectResponseRows();
+
+/* ============================================================
+   STORE RESPONSES LOCALLY
+   ============================================================ */
+let savedResponses = [];
+
+/* ============================================================
+   WRITE TO QUALTRICS
+   ============================================================ */
+let qualIndex = 0;
+
+function writeToQualtrics(resp, rt, tt) {
+    savedResponses.push({resp, rt, tt});
+
+    if (!responseRows[qualIndex]) return;
+
+    const inputs = responseRows[qualIndex];
+    inputs[0].value = resp;
+    inputs[1].value = rt;
+    inputs[2].value = tt;
+
+    qualIndex++;
+}
+
+/* ============================================================
+   FIXATION PHASE
+   ============================================================ */
+function startFixation() {
+    resetBar();
+    barOuter.style.visibility = "hidden";   // keep space, hide bar
+
+    wordsDiv.style.display = "none";
+    input.style.display = "none";
+    fixation.style.display = "block";
+
+    setTimeout(() => {
+        fixation.style.display = "none";
+        startWordPhase();
+    }, FIXATION_TIME);
+}
+
+/* ============================================================
+   WORD PHASE
    ============================================================ */
 function startWordPhase(){
  if(trialIndex >= problems.length){
@@ -154,8 +160,12 @@ function startWordPhase(){
    return;
  }
 
+ resetBar();
+ barOuter.style.visibility = "visible";
+
  const p = problems[trialIndex];
  wordsDiv.innerHTML = p.words.join("<br>");
+ wordsDiv.style.display = "block";
  input.style.display = "none";
  input.value = "";
  reactionStart = performance.now();
@@ -175,6 +185,7 @@ function startWordPhase(){
  function keyListener(e){
   if(e.key === "Enter") return;
   e.preventDefault();
+
   clearInterval(timer);
   document.removeEventListener("keydown",keyListener);
   firstKeyTime = performance.now() - reactionStart;
@@ -185,10 +196,13 @@ function startWordPhase(){
 }
 
 /* ============================================================
-   10. TYPING PHASE
+   TYPING PHASE
    ============================================================ */
 function startTypingPhase(firstChar){
- wordsDiv.innerHTML = "";
+ resetBar();
+ barOuter.style.visibility = "visible";
+
+ wordsDiv.style.display = "none";
  input.style.display = "block";
  input.value = firstChar || "";
  input.focus();
@@ -218,48 +232,60 @@ function startTypingPhase(firstChar){
 }
 
 /* ============================================================
-   11. NEXT TRIAL
+   SAVE + NEXT TRIAL
    ============================================================ */
 function nextTrial(response,rt,tt){
  writeToQualtrics(response,rt,tt);
  trialIndex++;
- setTimeout(startWordPhase,500); // auto-advance
+ setTimeout(startFixation,300);
 }
 
 /* ============================================================
-   12. FINISH EXPERIMENT
+   FINISH — REMOVE OVERLAY, REWRITE VALUES, AUTO‑ADVANCE
    ============================================================ */
 function finishExperiment(){
- restoreQualtricsUI();
- console.log("Experiment complete, check input fields!");
- setTimeout(function(){ qthis.clickNextButton(); },500); // auto-advance at end
+
+ if (overlay && overlay.parentNode) {
+     overlay.parentNode.removeChild(overlay);
+ }
+
+ setTimeout(() => {
+
+     for (let i = 0; i < savedResponses.length; i++) {
+         if (!responseRows[i]) continue;
+         const {resp, rt, tt} = savedResponses[i];
+         const inputs = responseRows[i];
+         inputs[0].value = resp;
+         inputs[1].value = rt;
+         inputs[2].value = tt;
+     }
+
+     qthis.clickNextButton();
+
+ }, 50);
 }
 
 /* ============================================================
-   13. LOAD PROBLEMS FROM GITHUB
+   LOAD PROBLEMS FROM GITHUB AND START
    ============================================================ */
-fetch("https://raw.githubusercontent.com/MichaelWoodc/qualtrics/refs/heads/main/CRAT-main/full_cra_problems.json")
+fetch("https://raw.githubusercontent.com/MichaelWoodc/qualtrics/main/CRAT-main/full_cra_problems.json")
 .then(resp => resp.json())
 .then(data => {
-    if(Array.isArray(data.problems) && data.problems.length > 0){
-        problems = data.problems;
+    if (data && Array.isArray(data.problems) && data.problems.length > 0) {
+        problems = data.problems.slice(0, 60);
     } else {
-        console.warn("GitHub JSON empty, using defaults");
         problems = [
-            {words:["age","mile","sand"], solution:"stone"},
-            {words:["apple","family","house"], solution:"tree"}
+            {words:["age","mile","sand"], solutions:["stone"]},
+            {words:["apple","family","house"], solutions:["tree"]},
+            {words:["blue","cake","cottage"], solutions:["cheese"]}
         ];
     }
 })
 .catch(err => {
     console.error("Failed to load GitHub JSON:", err);
-    problems = [
-        {words:["age","mile","sand"], solution:"stone"},
-        {words:["apple","family","house"], solution:"tree"}
-    ];
 })
 .finally(() => {
-    startWordPhase();
+    startFixation();
 });
 
 });
