@@ -1,0 +1,265 @@
+Qualtrics.SurveyEngine.addOnload(function () {
+
+const qthis = this;
+qthis.hideNextButton();
+
+/* ============================================================
+   1. HIDE ALL QUALTRICS SKIN
+   ============================================================ */
+(function hideQualtricsSkin() {
+    let el = qthis.getQuestionContainer().parentElement;
+    while (el && el !== document.body) {
+        const siblings = Array.from(el.parentElement.children);
+        siblings.forEach(sib => {
+            if (sib !== el) {
+                sib.style.display = "none";
+                sib.style.visibility = "hidden";
+                sib.style.opacity = "0";
+                sib.style.height = "0px";
+                sib.style.margin = "0";
+                sib.style.padding = "0";
+            }
+        });
+        el = el.parentElement;
+    }
+
+    document.documentElement.style.background = "#000";
+    document.body.style.background = "#000";
+    document.body.style.color = "#fff";
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.body.style.overflow = "hidden";
+})();
+
+/* ============================================================
+   2. RESTORE QUALTRICS UI AT END
+   ============================================================ */
+function restoreQualtricsUI() {
+    document.querySelectorAll("body *").forEach(el => {
+        el.style.display = "";
+        el.style.visibility = "";
+        el.style.opacity = "";
+        el.style.height = "";
+        el.style.margin = "";
+        el.style.padding = "";
+    });
+
+    document.body.style.background = "";
+    document.body.style.color = "";
+    document.body.style.overflow = "";
+}
+
+/* ============================================================
+   3. FULLSCREEN EXPERIMENT AREA
+   ============================================================ */
+const qc = qthis.getQuestionContainer();
+qc.innerHTML = "";
+qc.style.width = "100vw";
+qc.style.height = "100vh";
+qc.style.display = "flex";
+qc.style.flexDirection = "column";
+qc.style.alignItems = "center";
+qc.style.justifyContent = "center";
+qc.style.fontFamily = "Arial";
+qc.style.background = "#111";
+qc.style.color = "#fff";
+
+/* ============================================================
+   4. EXPERIMENT SETTINGS
+   ============================================================ */
+const WORD_TIME = 15000;
+const TYPE_TIME = 7000;
+
+let problems = [];
+let trialIndex = 0;
+let reactionStart = 0;
+let firstKeyTime = null;
+
+/* ============================================================
+   5. DISPLAY ELEMENTS
+   ============================================================ */
+const wordsDiv = document.createElement("div");
+wordsDiv.style.fontSize = "32px";
+wordsDiv.style.textAlign = "center";
+wordsDiv.style.marginBottom = "40px";
+
+const input = document.createElement("input");
+input.type = "text";
+input.style.fontSize = "28px";
+input.style.padding = "10px";
+input.style.width = "300px";
+input.style.textAlign = "center";
+input.style.display = "none";
+input.style.background = "#222";
+input.style.color = "#fff";
+input.style.border = "2px solid #fff";
+
+qc.appendChild(wordsDiv);
+qc.appendChild(input);
+
+/* ============================================================
+   6. PROGRESS BAR
+   ============================================================ */
+const barOuter = document.createElement("div");
+barOuter.style.width = "30vw";
+barOuter.style.height = "20px";
+barOuter.style.border = "2px solid #fff";
+barOuter.style.marginTop = "40px";
+
+const barInner = document.createElement("div");
+barInner.style.height = "100%";
+barInner.style.width = "100%";
+barInner.style.background = "#fff";
+barInner.style.transition = "width .1s linear";
+
+barOuter.appendChild(barInner);
+qc.appendChild(barOuter);
+
+function updateBar(timeLeft,total){
+ barInner.style.width = (timeLeft/total*100)+"%";
+}
+
+/* ============================================================
+   7. FIND QUALTRICS QUESTION INDEX
+   ============================================================ */
+let qualIndex = Array.from(document.querySelectorAll(".QuestionOuter")).indexOf(qthis.getQuestionContainer());
+if (qualIndex < 0) qualIndex = 0;  // fallback
+
+/* ============================================================
+   8. WRITE TO QUALTRICS FIELDS
+   ============================================================ */
+function writeToQualtrics(resp, rt, tt){
+ const questions = document.querySelectorAll(".QuestionOuter");
+ if(!questions[qualIndex]) return;
+
+ const inputs = Array.from(questions[qualIndex].querySelectorAll("input[type='text']"));
+ if(inputs.length >= 3){
+  console.log(`Trial ${trialIndex+1} -> response: "${resp}", rt: ${rt}, typing: ${tt}`);
+  inputs[0].value = resp || "";
+  inputs[1].value = rt || "";
+  inputs[2].value = tt || "";
+ } else {
+  console.warn("Not enough inputs for trial", qualIndex, inputs);
+ }
+
+ qualIndex++;  // move to next question for the next trial
+}
+
+/* ============================================================
+   9. WORD PHASE
+   ============================================================ */
+function startWordPhase(){
+ if(trialIndex >= problems.length){
+   finishExperiment();
+   return;
+ }
+
+ const p = problems[trialIndex];
+ wordsDiv.innerHTML = p.words.join("<br>");
+ input.style.display = "none";
+ input.value = "";
+ reactionStart = performance.now();
+ firstKeyTime = null;
+
+ let timeLeft = WORD_TIME/1000;
+
+ const timer = setInterval(function(){
+  timeLeft -= 0.1;
+  updateBar(timeLeft,WORD_TIME/1000);
+  if(timeLeft<=0){
+   clearInterval(timer);
+   nextTrial("","","");
+  }
+ },100);
+
+ function keyListener(e){
+  if(e.key === "Enter") return;
+  e.preventDefault();
+  clearInterval(timer);
+  document.removeEventListener("keydown",keyListener);
+  firstKeyTime = performance.now() - reactionStart;
+  startTypingPhase(e.key);
+ }
+
+ document.addEventListener("keydown",keyListener);
+}
+
+/* ============================================================
+   10. TYPING PHASE
+   ============================================================ */
+function startTypingPhase(firstChar){
+ wordsDiv.innerHTML = "";
+ input.style.display = "block";
+ input.value = firstChar || "";
+ input.focus();
+ input.setSelectionRange(input.value.length,input.value.length);
+
+ const typingStart = performance.now();
+ let timeLeft = TYPE_TIME/1000;
+
+ const timer = setInterval(function(){
+  timeLeft -= 0.1;
+  updateBar(timeLeft,TYPE_TIME/1000);
+  if(timeLeft<=0){
+   clearInterval(timer);
+   nextTrial(input.value,Math.round(firstKeyTime),Math.round(performance.now()-typingStart));
+  }
+ },100);
+
+ function enterListener(e){
+  if(e.key === "Enter"){
+   clearInterval(timer);
+   document.removeEventListener("keydown",enterListener);
+   nextTrial(input.value,Math.round(firstKeyTime),Math.round(performance.now()-typingStart));
+  }
+ }
+
+ document.addEventListener("keydown",enterListener);
+}
+
+/* ============================================================
+   11. NEXT TRIAL
+   ============================================================ */
+function nextTrial(response,rt,tt){
+ writeToQualtrics(response,rt,tt);
+ trialIndex++;
+ setTimeout(startWordPhase,500); // auto-advance
+}
+
+/* ============================================================
+   12. FINISH EXPERIMENT
+   ============================================================ */
+function finishExperiment(){
+ restoreQualtricsUI();
+ console.log("Experiment complete, check input fields!");
+ setTimeout(function(){ qthis.clickNextButton(); },500); // auto-advance at end
+}
+
+/* ============================================================
+   13. LOAD PROBLEMS FROM GITHUB
+   ============================================================ */
+fetch("https://raw.githubusercontent.com/MichaelWoodc/qualtrics/refs/heads/main/CRAT-main/full_cra_problems.json")
+.then(resp => resp.json())
+.then(data => {
+    if(Array.isArray(data.problems) && data.problems.length > 0){
+        problems = data.problems;
+    } else {
+        console.warn("GitHub JSON empty, using defaults");
+        problems = [
+            {words:["age","mile","sand"], solution:"stone"},
+            {words:["apple","family","house"], solution:"tree"}
+        ];
+    }
+})
+.catch(err => {
+    console.error("Failed to load GitHub JSON:", err);
+    problems = [
+        {words:["age","mile","sand"], solution:"stone"},
+        {words:["apple","family","house"], solution:"tree"}
+    ];
+})
+.finally(() => {
+    startWordPhase();
+});
+
+});
