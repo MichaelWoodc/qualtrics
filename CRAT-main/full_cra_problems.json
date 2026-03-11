@@ -1,6 +1,11 @@
 {
   "problems": [
     {
+      "words": ["date", "alley", "fold"],
+      "solutions": ["blind"],
+      "regex": ["blind"]
+    },
+    {
       "words": ["loser", "throat", "spot"],
       "solutions": ["sore"],
       "regex": ["sore"]
